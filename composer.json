@@ -1,0 +1,23 @@
+{
+    "name": "kingsoft/monolog-handler",
+    "description": "Extenstion to monolog/handlers",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Kingsoft\\MonologHandler\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "theking2",
+            "email": "theking2@king.ma"
+        }
+    ],
+    "minimum-stability": "RC",
+    "require": {
+        "monolog/monolog": "^3.0",
+        "cesargb/php-log-rotation": "^2.7",
+        "dragonmantank/cron-expression": "^3.3"
+    }
+}
