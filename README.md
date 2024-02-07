@@ -14,8 +14,8 @@ $log = new Monolog\Logger( SETTINGS['log']['name'] );
 $log->pushHandler(
 	new \Kingsoft\MonologHandler\CronRotatingFileHandler(
 		SETTINGS['log']['location'] . '/' . SETTINGS['log']['name'] . '_info.log',
-		SETTINGS['logrotate'],
-		Monolog\Level::fromName( SETTINGS['log']['level'] )
+		Monolog\Level::fromName( SETTINGS['log']['level'],
+		SETTINGS['logrotate'] )
 	)
 );
 ```
