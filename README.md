@@ -22,7 +22,7 @@ $log->pushHandler(
 With this in the ini-file
 ```ini
 [log]
-name = "plc"
+name = "app"
 location = "D:/Projekte/logs"
 level = Info
 
