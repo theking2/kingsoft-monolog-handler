@@ -1,6 +1,6 @@
 {
     "name": "kingsoft/monolog-handler",
-    "description": "Extenstion to monolog/handlers",
+    "description": "Additional handlers monolog, log rotation and cron handler",
     "type": "library",
     "license": "MIT",
     "autoload": {
