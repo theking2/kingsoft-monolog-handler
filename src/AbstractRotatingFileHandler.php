@@ -6,22 +6,22 @@ use Monolog\Utils;
 
 abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandler
 {
-  protected string $filename;
-  protected bool|null $mustRotate = null;
+  protected string             $filename;
+  protected bool|null          $mustRotate     = null;
   protected \DateTimeImmutable $nextRotation;
-  protected array $rotateSettings;
+  protected array              $rotateSettings;
 
   public function __construct(
     string $filename,
     int|string|Level $level = Level::Debug,
-	null|array $rotateSettings = [],
+    null|array $rotateSettings = [],
     bool $bubble = false,
     ?int $filePermission = null,
     bool $useLocking = false
   ) {
     $this->filename       = Utils::canonicalizePath( $filename );
     $this->nextRotation   = $this->getNextRotation();
-	$this->rotateSettings = $rotateSettings;
+    $this->rotateSettings = $rotateSettings;
 
     parent::__construct( $this->filename, $level, $bubble, $filePermission, $useLocking );
   }
@@ -56,16 +56,15 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
     if( true === $this->mustRotate ) {
       $this->rotate();
     }
-        if ($this->nextRotation <= $record->datetime) {
-            $this->mustRotate = true;
-            $this->close();
-        }
+    if( $this->nextRotation <= $record->datetime ) {
+      $this->mustRotate = true;
+      $this->close();
+    }
     parent::write( $record );
   }
 
   abstract protected function rotate(): void;
 
   abstract protected function getNextRotation(): \DateTimeImmutable;
-
 
 }
