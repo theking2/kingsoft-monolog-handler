@@ -67,6 +67,6 @@ class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Han
     $nextRun      = $this->cron->getNextRunDate( $filedateTime );     // next-run datetime
 
     // true if current datetime is greater than or equal to next-run datetime
-    return $dateTime >= $nextRun;
+    return $dateTime >= $nextRun ? touch($this->stateFilename) || true : false;
   }
 }
