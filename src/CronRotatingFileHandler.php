@@ -24,11 +24,9 @@ use \Cron\CronExpression;
  * handle the rotation is strongly encouraged when you can use it.
  *
  */
-class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Handler\HandlerInterface
+class CronRotatingFileHandler extends Handler\StreamHandler implements Handler\HandlerInterface
 {
-  private string         $stateFilename;
-  private DTI            $nextRotation;
-  private CronExpression $cron;
+  private $stateFilename;
 
   /**
    * @param int      $maxFiles       The maximal amount of files to keep (0 means unlimited)
@@ -38,50 +36,52 @@ class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Han
   public function __construct(
     string $filename,
     int|string|Level $level = Level\Level::Debug,
-    array $rotateSettings = [],
+    array $rotateSettings,
     bool $bubble = false,
     ?int $filePermission = null,
     bool $useLocking = false
   ) {
-    if( empty( $rotateSettings ) ) {
-      throw new \InvalidArgumentException( 'Missing rotateSettings' );
-    }
-    if( empty( $rotateSettings['cronExpression'] ) ) {
-      throw new \InvalidArgumentException( 'Missing cronExpression in rotateSettings' );
-    }
-    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
-    $this->cron     = new CronExpression( $cronExpression );
-
-    $this->filename   = Utils::canonicalizePath( $filename );
-    $this->mustRotate = $this->mustRotate();
-
+    $this->filename = Utils::canonicalizePath( $filename );
+ 
     parent::__construct( $this->filename, $level, $rotateSettings, $bubble, $filePermission, $useLocking );
   }
-
-  protected function mustRotate(): bool
+  /**
+   * checkRotate
+   *
+   * @return void
+   */
+  protected function rotate(): void
   {
-    $this->nextRotation = $this->getNextRotation();
+    $maxFiles       = (int)$this->rotateSettings['maxFiles'] ?? 10;
+    $minSize        = (int)$this->rotateSettings['minSize'] ?? 0;
+    $compress       = (bool)$this->rotateSettings['compress'] ?? false;
 
-    // check if log file is due based on state file modified time
-    return $this->nextRotation <= new DTI();
+
+    // create state file if not exist
+    $rotation = ( new \Cesargb\Log\Rotation() )
+      ->files( $maxFiles )
+      ->minSize( $minSize );
+    if( $compress ) {
+      $rotation->compress();
+    }
   }
 
-  /**
-   * Get the next rotation date, based on the cron expression and the state file
-   */
-  protected function getNextRotation(): DTI
-  {
-    // create state file if not exists
+	protected function getNextRotation(): \DateTimeImmutable
+	{
+	    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
+
+		$cron = new \Cron\CronExpression( $cronExpression );
     $stateFilename = Utils::canonicalizePath( $this->filename . '.state' );
     $fileInfo      = new \SplFileInfo( $stateFilename );
     if( !$fileInfo->isFile() ) {
       touch( $stateFilename );
     }
-    // check if log file is due based on state file modified time
-    $dateTime     = new DTI();                         // current datetime
-    $filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
+		// check if log file is due based on state file modified time
+		$dateTime     = new \DateTimeImmutable();                         // current datetime
+		$filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
 
-    return DTI::createFromMutable( $this->cron->getNextRunDate( $filedateTime ) );           // next-run datetime
-  }
+		return \DateTimeImmutable::createFromMutable($cron->getNextRunDate( $filedateTime ));           // next-run datetime
+
+	}
 
 }
