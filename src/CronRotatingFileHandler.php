@@ -11,9 +11,11 @@ namespace Kingsoft\MonologHandler;
  * file that was distributed with this source code.
  */
 
+use \DateTimeImmutable as DTi;
 use Monolog\Level;
 use Monolog\Utils;
 use Monolog\Handler;
+use \Cron\CronExpression;
 
 /**
  * Stores logs rotated by cron expression
@@ -24,7 +26,9 @@ use Monolog\Handler;
  */
 class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Handler\HandlerInterface
 {
-  private $stateFilename;
+  private string         $stateFilename;
+  private DTI            $nextRotation;
+  private CronExpression $cron;
 
   /**
    * @param int      $maxFiles       The maximal amount of files to keep (0 means unlimited)
@@ -39,47 +43,45 @@ class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Han
     ?int $filePermission = null,
     bool $useLocking = false
   ) {
-    $this->filename = Utils::canonicalizePath( $filename );
- 
+    if( empty( $rotateSettings ) ) {
+      throw new \InvalidArgumentException( 'Missing rotateSettings' );
+    }
+    if( empty( $rotateSettings['cronExpression'] ) ) {
+      throw new \InvalidArgumentException( 'Missing cronExpression in rotateSettings' );
+    }
+    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
+    $this->cron     = new CronExpression( $cronExpression );
+
+    $this->filename   = Utils::canonicalizePath( $filename );
+    $this->mustRotate = $this->mustRotate();
+
     parent::__construct( $this->filename, $level, $rotateSettings, $bubble, $filePermission, $useLocking );
   }
-  /**
-   * checkRotate
-   *
-   * @return void
-   */
-  protected function rotate(): void
+
+  protected function mustRotate(): bool
   {
-    $maxFiles       = (int)$this->rotateSettings['maxFiles'] ?? 10;
-    $minSize        = (int)$this->rotateSettings['minSize'] ?? 0;
-    $compress       = (bool)$this->rotateSettings['compress'] ?? false;
+    $this->nextRotation = $this->getNextRotation();
 
-
-    // create state file if not exist
-    $rotation = ( new \Cesargb\Log\Rotation() )
-      ->files( $maxFiles )
-      ->minSize( $minSize );
-    if( $compress ) {
-      $rotation->compress();
-    }
+    // check if log file is due based on state file modified time
+    return $this->nextRotation <= new DTI();
   }
 
-	protected function getNextRotation(): \DateTimeImmutable
-	{
-	    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
-
-		$cron = new \Cron\CronExpression( $cronExpression );
+  /**
+   * Get the next rotation date, based on the cron expression and the state file
+   */
+  protected function getNextRotation(): DTI
+  {
+    // create state file if not exists
     $stateFilename = Utils::canonicalizePath( $this->filename . '.state' );
     $fileInfo      = new \SplFileInfo( $stateFilename );
     if( !$fileInfo->isFile() ) {
       touch( $stateFilename );
     }
-		// check if log file is due based on state file modified time
-		$dateTime     = new \DateTimeImmutable();                         // current datetime
-		$filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
+    // check if log file is due based on state file modified time
+    $dateTime     = new DTI();                         // current datetime
+    $filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
 
-		return \DateTimeImmutable::createFromMutable($cron->getNextRunDate( $filedateTime ));           // next-run datetime
-
-	}
+    return DTI::createFromMutable( $this->cron->getNextRunDate( $filedateTime ) );           // next-run datetime
+  }
 
 }

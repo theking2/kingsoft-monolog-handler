@@ -33,6 +33,7 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
     private string $current_file;
     public function testWrite()
     {
+
         $log = $this->openLog();
         $log->info( message: 'test1' );
         $this->assertFileExists( $this->current_file );
@@ -52,18 +53,26 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
         $this->waitForNextMinute();
         $log = $this->openLog();
         $log->info( message: 'test3' );
-        unset( $log );
+
+        // not closing the log will not rotate the file
+        //unset( $log );
 
         // log file should be rotated
         // but not twice
         $this->assertFileDoesNotExist( $this->current_file . '.3' );
+
+        // check if log file is rotated
+        $this->waitForNextMinute();
+        $log->info( message: 'test4' );
     }
     public function tearDown(): void
     {
+        // remove log files and state file
         unlink( filename: $this->current_file . '.state' );
         unlink( filename: $this->current_file );
         unlink( filename: $this->current_file . '.1' );
         unlink( filename: $this->current_file . '.2' );
+        // remove logs directory
         rmdir( dirname( $this->current_file ) );
     }
 }

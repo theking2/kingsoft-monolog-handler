@@ -3,13 +3,16 @@ namespace Kingsoft\MonologHandler;
 
 use Monolog\Level;
 use Monolog\Utils;
+use Cesargb\Log\Rotation;
 
+// child must
 abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandler
 {
-  protected string             $filename;
-  protected bool|null          $mustRotate     = null;
-  protected \DateTimeImmutable $nextRotation;
-  protected array              $rotateSettings;
+  protected bool|null $mustRotate = null; // must rotate on next write
+  private Rotation    $rotation;
+  protected string    $filename; // base filename, rotation will add .1, .2, etc
+
+  abstract protected function mustRotate(): bool;
 
   public function __construct(
     string $filename,
@@ -19,27 +22,34 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
     ?int $filePermission = null,
     bool $useLocking = false
   ) {
-    $this->filename       = Utils::canonicalizePath( $filename );
-    $this->nextRotation   = $this->getNextRotation();
-    $this->rotateSettings = $rotateSettings;
+    $this->setupRotator( $rotateSettings );
 
+    $this->filename = Utils::canonicalizePath( $filename );
+
+    // Check if we must rotate on next write
+    $this->mustRotate = $this->mustRotate();
+
+    // Call parent constructor
     parent::__construct( $this->filename, $level, $bubble, $filePermission, $useLocking );
   }
-  /**
-   * @inheritDoc
-   */
-  public function close(): void
+  private function setupRotator( $rotateSettings ): void
   {
-    parent::close();
+    if( empty( $rotateSettings ) ) {
+      throw new \InvalidArgumentException( 'Missing rotateSettings' );
+    }
 
-    if( true === $this->mustRotate ) {
-      $this->rotate();
+    $maxFiles = (int) ( $rotateSettings['maxFiles'] ?? 10 );
+    $minSize  = (int) ( $rotateSettings['minSize'] ?? 0 );
+    $compress = (bool) ( $rotateSettings['compress'] ?? false );
+
+    $this->rotation = ( new Rotation() )
+      ->files( $maxFiles )
+      ->minSize( $minSize );
+    if( $compress ) {
+      $this->rotation->compress();
     }
   }
 
-  /**
-   * @inheritDoc
-   */
   public function reset(): void
   {
     parent::reset();
@@ -54,17 +64,16 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
   protected function write( \Monolog\LogRecord $record ): void
   {
     if( true === $this->mustRotate ) {
+      $this->close();
       $this->rotate();
     }
-    if( $this->nextRotation <= $record->datetime ) {
-      $this->mustRotate = true;
-      $this->close();
-    }
+
     parent::write( $record );
   }
 
-  abstract protected function rotate(): void;
-
-  abstract protected function getNextRotation(): \DateTimeImmutable;
+  protected function rotate(): void
+  {
+    $this->rotation->rotate( $this->filename );
+  }
 
 }
