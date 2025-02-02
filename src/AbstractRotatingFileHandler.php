@@ -58,6 +58,7 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
     parent::reset();
 
     if( true === $this->mustRotate ) {
+      $this->close();
       $this->rotate();
     }
   }
@@ -67,6 +68,7 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
   protected function write( \Monolog\LogRecord $record ): void
   {
     if( true === $this->mustRotate ) {
+      $this->close();
       $this->rotate();
     }
 

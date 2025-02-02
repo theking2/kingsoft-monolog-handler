@@ -29,7 +29,7 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
         fwrite( STDERR, "\033[00;32mWaiting...\n" );
 
         $now        = time();
-        $nextMinute = strtotime( date( 'Y-m-d H:i:59', $now ) ) + 2;
+        $nextMinute = strtotime( date( 'Y-m-d H:i:59', $now ) ) + 1;
         sleep( $nextMinute - $now );
     }
     private string $current_file;
@@ -78,7 +78,7 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
 
     }
     public function tearDown(): void
-    {return;
+    {
         // remove log files and state file
         unlink( filename: $this->current_file );
         unlink( filename: $this->current_file . '.1' );
