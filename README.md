@@ -1,6 +1,6 @@
 # Rotating and Crontab StreamingFileHandler for Monolog
 
-This handler combines rotating (`AbstractRotatingFileHandler`) with and crontab based FileHandler (`CronRotatingFileHandler`) to offer a cron based rotating file handler. It is based on `Cesargb\php-log-rotation` for advanced rotation and `dragonmantank\cron-expression`  for cron interpretation. The abstract class can be used for different ways of rotation and requires an implementation of `mustRotate()` to estblish to know if a rotation is needed. 
+This handler combines rotating (`AbstractRotatingFileHandler`) with an crontab based FileHandler (`CronRotatingFileHandler`) to offer a cron based rotating file handler. It is based on `Cesargb\php-log-rotation` for advanced rotation and `dragonmantank\cron-expression`  for cron interpretation. The abstract class can be used for different ways of rotation and requires an implementation of `mustRotate()` to estblish to know if a rotation is needed. 
 
 # Install` and configure
 
