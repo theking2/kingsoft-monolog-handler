@@ -25,6 +25,9 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
     $this->setupRotator( $rotateSettings );
 
     $this->filename = Utils::canonicalizePath( $filename );
+    if( !is_dir( \dirname( $this->filename ) ) ) {
+      mkdir( \dirname( $this->filename ), 0777, true );
+    }
 
     // Check if we must rotate on next write
     $this->mustRotate = $this->mustRotate();
@@ -55,6 +58,7 @@ abstract class AbstractRotatingFileHandler extends \Monolog\Handler\StreamHandle
     parent::reset();
 
     if( true === $this->mustRotate ) {
+      $this->close();
       $this->rotate();
     }
   }
