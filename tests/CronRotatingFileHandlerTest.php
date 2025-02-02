@@ -26,10 +26,10 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
     }
     public function waitForNextMinute(): void
     {
-        fwrite(STDERR, "\033[00;32mWaiting...\n");
+        fwrite( STDERR, "\033[00;32mWaiting...\n" );
 
         $now        = time();
-        $nextMinute = strtotime( date( 'Y-m-d H:i:59', $now ) ) + 1;
+        $nextMinute = strtotime( date( 'Y-m-d H:i:59', $now ) ) + 2;
         sleep( $nextMinute - $now );
     }
     private string $current_file;
@@ -43,7 +43,7 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
     // }
     public function testWriteLong()
     {
-        fwrite(STDERR, "\033[00;31mThis test takes 3 minutes\n");
+        fwrite( STDERR, "\033[00;31mThis test takes 3 minutes\n" );
         $log = $this->openLog();
         $log->info( message: 'test1' );
         $this->assertFileExists( $this->current_file );
@@ -53,35 +53,37 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
         $this->waitForNextMinute();
         $log = $this->openLog();
         $log->info( message: 'test2' );
-        unset( $log );
         // check if log file is rotated
         $this->assertFileExists( $this->current_file . '.1' );
         $this->assertStringNotContainsString( 'test1', file_get_contents( $this->current_file ) );
         $this->assertStringContainsString( 'test2', file_get_contents( $this->current_file ) );
+        unset( $log );
 
         // check if list is limited to maxFiles
         $this->waitForNextMinute();
         $log = $this->openLog();
         $log->info( message: 'test3' );
+        $this->assertFileDoesNotExist( $this->current_file . '.3' );
 
-        // not closing the log will not rotate the file
+        // not closing the log will not rotate the file until the next write
         //unset( $log );
 
         // log file should be rotated
         // but not twice
-        $this->assertFileDoesNotExist( $this->current_file . '.3' );
 
         // check if log file is rotated
         $this->waitForNextMinute();
         $log->info( message: 'test4' );
+        $this->assertFileExists( $this->current_file );
+
     }
     public function tearDown(): void
-    {
+    {return;
         // remove log files and state file
-        unlink( filename: $this->current_file . '.state' );
         unlink( filename: $this->current_file );
         unlink( filename: $this->current_file . '.1' );
         unlink( filename: $this->current_file . '.2' );
+        unlink( filename: $this->current_file . '.state' );
         // remove logs directory
         rmdir( dirname( $this->current_file ) );
     }

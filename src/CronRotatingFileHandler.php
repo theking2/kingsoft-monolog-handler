@@ -3,8 +3,6 @@
 namespace Kingsoft\MonologHandler;
 
 /*
- * This file is part of the Monolog package.
- * 
  * (c) TheKing2 <theking2@king.ma>
  *
  * For the full copyright and license information, please view the LICENSE
@@ -24,64 +22,51 @@ use \Cron\CronExpression;
  * handle the rotation is strongly encouraged when you can use it.
  *
  */
-class CronRotatingFileHandler extends Handler\StreamHandler implements Handler\HandlerInterface
+class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Handler\HandlerInterface
 {
-  private $stateFilename;
+  private                $stateFilename;
+  private CronExpression $cron;
 
   /**
-   * @param int      $maxFiles       The maximal amount of files to keep (0 means unlimited)
-   * @param int|null $filePermission Optional file permissions (default (0644) are only for owner read/write)
-   * @param bool     $useLocking     Try to lock log file before doing any writes
+   * @param $filename The log file path
+   * @param $level The minimum logging level at which this handler will be triggered
+   * @param $rotateSettings The settings for the log rotation
+   * @param $bubble Whether the messages that are handled can bubble up the stack or not
+   * @param $filePermission Optional file permissions (default (0644) are only for owner read/write)
+   * @param $useLocking Try to lock log file before doing any writes
+   * @throws \InvalidArgumentException
+   * @throws \RuntimeException
+   * rotateSettings include:
+   * - cronExpression: The cron expression to use for rotation
+   * - maxFiles: The maximum number of files to keep (0 means unlimited)
+   * - minSize: The minimum size of the file to rotate
+   * - compress: Whether to compress the files or not
    */
   public function __construct(
     string $filename,
-    int|string|Level $level = Level\Level::Debug,
+    int|string|Level $level,
     array $rotateSettings,
     bool $bubble = false,
     ?int $filePermission = null,
     bool $useLocking = false
   ) {
-    $this->filename = Utils::canonicalizePath( $filename );
- 
-    parent::__construct( $this->filename, $level, $rotateSettings, $bubble, $filePermission, $useLocking );
+    $this->stateFilename = Utils::canonicalizePath( $filename . '.state' );
+    $this->cron          = new CronExpression( $rotateSettings['cronExpression'] ?? '* * */1 * *' );
+
+    parent::__construct( $filename, $level, $rotateSettings, $bubble, $filePermission, $useLocking );
   }
-  /**
-   * checkRotate
-   *
-   * @return void
-   */
-  protected function rotate(): void
+
+  protected function mustRotate(): bool
   {
-    $maxFiles       = (int)$this->rotateSettings['maxFiles'] ?? 10;
-    $minSize        = (int)$this->rotateSettings['minSize'] ?? 0;
-    $compress       = (bool)$this->rotateSettings['compress'] ?? false;
-
-
-    // create state file if not exist
-    $rotation = ( new \Cesargb\Log\Rotation() )
-      ->files( $maxFiles )
-      ->minSize( $minSize );
-    if( $compress ) {
-      $rotation->compress();
+    if( !file_exists( $this->stateFilename ) ) {
+      touch( $this->stateFilename );
     }
+    $dateTime     = new DTI();                                        // current datetime
+    $fileInfo     = new \SplFileInfo( $this->stateFilename );         // state-file info
+    $filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
+    $nextRun      = $this->cron->getNextRunDate( $filedateTime );     // next-run datetime
+
+    // true if current datetime is greater than or equal to next-run datetime
+    return $dateTime >= $nextRun;
   }
-
-	protected function getNextRotation(): \DateTimeImmutable
-	{
-	    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
-
-		$cron = new \Cron\CronExpression( $cronExpression );
-    $stateFilename = Utils::canonicalizePath( $this->filename . '.state' );
-    $fileInfo      = new \SplFileInfo( $stateFilename );
-    if( !$fileInfo->isFile() ) {
-      touch( $stateFilename );
-    }
-		// check if log file is due based on state file modified time
-		$dateTime     = new \DateTimeImmutable();                         // current datetime
-		$filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
-
-		return \DateTimeImmutable::createFromMutable($cron->getNextRunDate( $filedateTime ));           // next-run datetime
-
-	}
-
 }
