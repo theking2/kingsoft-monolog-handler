@@ -22,8 +22,9 @@ use Monolog\Handler;
  * handle the rotation is strongly encouraged when you can use it.
  *
  */
-class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Handler\HandlerInterface
+class CronRotatingFileHandler extends Handler\StreamHandler implements Handler\HandlerInterface
 {
+  private $filename;
   private $stateFilename;
 
   /**
@@ -34,52 +35,53 @@ class CronRotatingFileHandler extends AbstractRotatingFileHandler implements Han
   public function __construct(
     string $filename,
     int|string|Level $level = Level\Level::Debug,
-    array $rotateSettings = [],
+    array $rotateSettings,
     bool $bubble = false,
     ?int $filePermission = null,
     bool $useLocking = false
   ) {
     $this->filename = Utils::canonicalizePath( $filename );
- 
-    parent::__construct( $this->filename, $level, $rotateSettings, $bubble, $filePermission, $useLocking );
+    $this->checkRotate( $rotateSettings );
+
+    parent::__construct( $this->filename, $level, $bubble, $filePermission, $useLocking );
   }
   /**
    * checkRotate
    *
    * @return void
    */
-  protected function rotate(): void
+  protected function checkRotate( array $rotateSettings ): void
   {
-    $maxFiles       = (int)$this->rotateSettings['maxFiles'] ?? 10;
-    $minSize        = (int)$this->rotateSettings['minSize'] ?? 0;
-    $compress       = (bool)$this->rotateSettings['compress'] ?? false;
+    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
+    $maxFiles       = (int) ( $rotateSettings['maxFiles'] ?? 10 );
+    $minSize        = (int) ( $rotateSettings['minSize'] ?? 0 );
+    $compress       = (bool) ( $rotateSettings['compress'] ?? false );
 
 
-    // create state file if not exist
-    $rotation = ( new \Cesargb\Log\Rotation() )
-      ->files( $maxFiles )
-      ->minSize( $minSize );
-    if( $compress ) {
-      $rotation->compress();
-    }
-  }
-
-	protected function getNextRotation(): \DateTimeImmutable
-	{
-	    $cronExpression = $rotateSettings['cronExpression'] ?? '* * */1 * *';
-
-		$cron = new \Cron\CronExpression( $cronExpression );
     $stateFilename = Utils::canonicalizePath( $this->filename . '.state' );
     $fileInfo      = new \SplFileInfo( $stateFilename );
     if( !$fileInfo->isFile() ) {
       touch( $stateFilename );
     }
-		// check if log file is due based on state file modified time
-		$dateTime     = new \DateTimeImmutable();                         // current datetime
-		$filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
+    // create state file if not exist
+    $rotation = ( new \Cesargb\Log\Rotation() )
+      ->files( $maxFiles )
+      ->minSize( $minSize )
+      ->truncate();
+    if( $compress ) {
+      $rotation->compress();
+    }
+    $cron = new \Cron\CronExpression( $cronExpression );
+    // check if log file is due based on state file modified time
+    $dateTime     = new \DateTimeImmutable();                         // current datetime
+    $filedateTime = $dateTime->setTimeStamp( $fileInfo->getMTime() ); // state-file datetime
+    $nextRun      = $cron->getNextRunDate( $filedateTime );           // next-run datetime
 
-		return \DateTimeImmutable::createFromMutable($cron->getNextRunDate( $filedateTime ));           // next-run datetime
-
-	}
-
+    // if log file is due, rotate it
+    if( $nextRun < $dateTime ) {
+      // rotate log file
+      touch( $fileInfo->getRealPath() );
+      $rotation->rotate( $this->filename );
+    }
+  }
 }

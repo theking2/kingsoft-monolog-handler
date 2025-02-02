@@ -26,13 +26,24 @@ class CronRotatingFileHandlerTest extends \PHPUnit\Framework\TestCase
     }
     public function waitForNextMinute(): void
     {
+        fwrite(STDERR, "\033[00;32mWaiting...\n");
+
         $now        = time();
         $nextMinute = strtotime( date( 'Y-m-d H:i:59', $now ) ) + 1;
         sleep( $nextMinute - $now );
     }
     private string $current_file;
-    public function testWrite()
+
+    // public function testWriteShort()
+    // {
+    //     $log = $this->openLog();
+    //     $log->info( message: 'test' );
+    //     $this->assertFileExists( $this->current_file );
+    //     $this->assertStringContainsString( 'info', file_get_contents( $this->current_file ) );
+    // }
+    public function testWriteLong()
     {
+        fwrite(STDERR, "\033[00;31mThis test takes 3 minutes\n");
         $log = $this->openLog();
         $log->info( message: 'test1' );
         $this->assertFileExists( $this->current_file );
