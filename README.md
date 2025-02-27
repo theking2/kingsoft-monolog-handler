@@ -39,3 +39,6 @@ minSize = 120
 compress = false
 ```
 
+
+> [!IMPORTANT]  
+> Rotation will not work if a another instance is opening the log and write an entry. This would touch the `.state` and will not rotate!. This could happen for instance and API write to the same log file before a frontend application pings back to the server. In other words this logger is currently not reentrant-safe.
